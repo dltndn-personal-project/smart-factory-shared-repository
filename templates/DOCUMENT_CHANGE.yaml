@@ -1,0 +1,20 @@
+issue_id: "ISSUE-<UUID>"
+type: DOCUMENT_CHANGE
+source:
+  component: "<작성 Component>"
+  task: "<작업 ID>"
+created_at: "<UTC ISO-8601>"
+summary: "<한 줄 요약>"
+attention: []
+related_issues: []
+reason: "<변경 필요성>"
+changed_documents:
+  - file: docs/INTERFACES.md   # docs/ 또는 agent-core/ 아래 경로
+    section: "<변경 대상>"
+change:
+  before: "<이전 의미>"
+  after: "<변경된 의미>"
+compatibility: "<기존 구현에 미치는 영향과 그 근거>"
+transition:
+  adoption: "<채택 조건 및 검증>"
+  rollback: "<복구 방법 또는 해당 없음의 이유>"

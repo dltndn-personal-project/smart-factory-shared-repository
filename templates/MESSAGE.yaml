@@ -1,0 +1,16 @@
+issue_id: "ISSUE-<UUID>"
+type: MESSAGE
+source:
+  component: "<작성 Component>"
+  task: "<작업 ID>"
+created_at: "<UTC ISO-8601>"
+summary: "<한 줄 요약>"
+attention: []
+related_issues: []
+observation: |
+  <관찰 사실, 재현 조건, 불확실한 부분을 구분>
+requested_action: null
+evidence: []
+follow_up:
+  owner: null
+  done_when: null

@@ -1,0 +1,20 @@
+# sample: 가상 Issue. issues/index.json에 등록하지 않는다.
+issue_id: SAMPLE-REPLY
+type: MESSAGE
+source:
+  component: producer
+  task: PRODUCER-21
+created_at: '2026-01-02T00:00:00Z'
+summary: 발행 순서 수정 완료, 통합 재검증 요청
+attention:
+- consumer
+- integration
+related_issues:
+- SAMPLE-REQUEST
+observation: producer v1.4.1에서 파일 기록 완료 후 이벤트를 발행하도록 수정함
+requested_action: 해당 버전 조합에서 재검증해 주세요
+evidence:
+- <수정 PR 링크>
+follow_up:
+  owner: integration
+  done_when: 고정된 Component 버전 조합의 재검증 결과를 공유

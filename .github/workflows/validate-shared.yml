@@ -1,0 +1,67 @@
+name: Validate Shared
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - name: Validate Issue ledger and document changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: python scripts/validate_shared.py --base "$BASE_SHA"
+      - run: python -m unittest discover -s scripts -p 'test_*.py'
+      - name: Test the shared agent tools
+        run: python -m unittest discover -s agent-core/tools -p 'test_*.py'
+
+  # PR code runs here with a read-only token.
+  approval-scope:
+    needs: validate
+    if: >-
+      github.event_name == 'pull_request' && !github.event.pull_request.draft &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    outputs:
+      eligible: ${{ steps.scope.outputs.eligible }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: python scripts/auto_approval.py --base "$BASE_SHA" >> "$GITHUB_OUTPUT"
+
+  # Only new MESSAGE Issues reach this job. Everything else waits for CODEOWNERS.
+  auto-approve:
+    needs: approval-scope
+    if: needs.approval-scope.outputs.eligible == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          gh pr review "$PR_URL" --approve --body "새 MESSAGE만 추가하고 Validate Shared를 통과하여 자동 승인합니다."
+          gh pr merge "$PR_URL" --auto --squash
