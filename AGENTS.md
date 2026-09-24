@@ -12,7 +12,7 @@
 
 ## agent-core
 
-- `agent-core/`는 모든 Component의 작업 절차와 도구 원본이다. Component의 PROCESS 회고에서 나온 제안으로 바꾼다. `reason`에 근거 회고를 적는다.
+- `agent-core/`는 모든 Component의 작업 절차와 도구 원본이다. Component의 PROCESS 회고나 사용자 요청에서 나온 제안으로 바꾼다. `reason`에 근거 회고(없으면 사용자 요청)를 적는다. 회고는 사용자가 요청할 때만 작성된다.
 - 도구를 바꾸면 `agent-core/tools`의 테스트도 함께 고치고 실행한다. 검증·멈춤 조건을 약하게 만드는 변경은 그 이유와 위험을 PR에 명시한다.
 - 각 Component가 채택하는 방법과 복구 방법을 `transition`에 적는다. 이 저장소에서 Component의 사본을 직접 고치지 않는다.
 

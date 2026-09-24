@@ -49,10 +49,10 @@
 
 ## agent-core 변경
 
-`agent-core/`는 모든 Component가 `agent/core/`로 복사해 쓰는 작업 절차와 도구다. Component의 회고에서 원인이 PROCESS로 반복되면 그 Component의 Agent가 변경을 제안한다.
+`agent-core/`는 모든 Component가 `agent/core/`로 복사해 쓰는 작업 절차와 도구다. Component의 회고(사용자가 요청할 때만 작성)에서 원인이 PROCESS로 반복되거나 사용자가 요청하면 그 Component의 Agent가 변경을 제안한다.
 
 1. `agent-core/`의 파일을 고치고, 도구를 바꾸면 테스트도 고친다.
-2. DOCUMENT_CHANGE의 `changed_documents`에 바꾼 `agent-core/` 경로를 적는다. `attention: []`(모든 Component), `reason`에 근거 회고 ID, `transition.adoption`에 sync-core 채택, `rollback`에 이전 `process_ref`로 복구를 적는다.
+2. DOCUMENT_CHANGE의 `changed_documents`에 바꾼 `agent-core/` 경로를 적는다. `attention: []`(모든 Component), `reason`에 근거 회고 ID(없으면 사용자 요청), `transition.adoption`에 sync-core 채택, `rollback`에 이전 `process_ref`로 복구를 적는다.
 3. CODEOWNERS 승인 후 merge된다. merge된 DOCUMENT_CHANGE가 전파 메시지다. 별도 MESSAGE를 게시하지 않는다.
 4. 각 Component는 Shared 검토에서 이 Issue를 만나면 `agent.py sync-core --ref <review_sha>`로 채택하고 처리 상태를 기록한다.
 
