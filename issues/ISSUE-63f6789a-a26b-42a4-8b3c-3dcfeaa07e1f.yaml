@@ -1,0 +1,54 @@
+issue_id: "ISSUE-63f6789a-a26b-42a4-8b3c-3dcfeaa07e1f"
+type: MESSAGE
+source:
+  component: "vision-inspection"
+  task: "SHARED-1"
+created_at: "2026-09-25T08:23:07Z"
+summary: "Vision 인터페이스 설계 중 확인한 Shared 계약 명확화 질문 8건"
+attention:
+  - factory-simulator
+  - factory-operations
+  - integration
+related_issues: []
+observation: |
+  vision-inspection 아키텍처 초안을 쓰면서 Shared 계약(ref 6bcd2aad8e374a7e96f816051585a49cb5e30f86)에서 정해지지 않았거나
+  서로 어긋나 보이는 점을 모았다. 범위 축소 제안과는 관계없이 구현 전에 필요한 질문이다. 각 항목의 "현재 가정"은
+  vision-inspection 초안의 작업 가정이며 확정이 아니다.
+
+  Q-6 Timestamp 유지 (ARCHITECTURE 9·17절, CONVENTIONS Timestamp)
+  - Vision Result의 timestamp는 입력 이벤트의 timestamp를 바꾸지 않고 유지하는 것으로 확정인가? 처리 시각을 별도 필드로 둘 필요가 있는가?
+  - 현재 가정: 입력 문자열을 재포맷 없이 그대로 싣고, 처리 시각 필드는 두지 않는다. 밀리초 자릿수는 CONVENTIONS에서 미정이다.
+
+  Q-7 MQTT 연결 규칙 (ARCHITECTURE 5.1절, INTERFACES 작성 항목)
+  - QoS, retain, client id 규칙을 공통으로 정하는가?
+  - 현재 가정: 정하지 않았다. Vision은 설정으로 받는다.
+
+  Q-9 ID 정책 (ARCHITECTURE 11절, CONVENTIONS ID)
+  - product_id의 유일성 범위(실행 간 재사용 여부)는? production sequence의 정의와 생성 주체는? Vision Result에 production sequence를 실어야 하는가?
+  - 형식이 ^P-[0-9]{8}$에 맞지 않는 product_id를 받았을 때 소비자는 무엇을 해야 하는가?
+  - 현재 가정: 형식 불일치는 경고 로그만 남기고 처리한다.
+
+  Q-11 Inspection Image (ARCHITECTURE 5.4절, INTERFACES Image Reference)
+  - 5.4절의 "Inspection Image"는 무엇이며 누가 어느 디렉터리에 기록하는가? Image Reference 디렉터리 표에는 대응 행이 없다.
+
+  Q-12 공통 실행 방식 (CONVENTIONS 실행 환경과 설정, ARCHITECTURE 19.1절)
+  - 공통 실행 방식(Docker Compose 등)은 무엇인가? integration이 정의하는 공유 볼륨의 마운트 경로 규칙이 있는가?
+  - 현재 가정: 컨테이너로 실행하고 IMAGE_ROOT를 설정으로 받는다.
+
+  Q-14 처리량과 지연 (ARCHITECTURE 2·4.1절)
+  - Simulator의 제품 생성 속도(초당 제품 수) 상한은? Dashboard 5초 갱신 기준 안에서 Vision 결과 지연 목표가 있는가?
+
+  Q-15 오류 표현 (CONVENTIONS 이름·단위·오류 표현, ARCHITECTURE 12절)
+  - 입력 검증 실패 같은 처리 실패를 결과 payload로 알려야 하는가, 로그만 남기고 발행하지 않는가?
+  - 현재 가정: 로그만 남기고 결과를 발행하지 않는다. 재시도는 하지 않는다(12절).
+
+  Q-17 ARCHITECTURE 6절 다이어그램 문구
+  - Simulator에서 MQTT Broker로 가는 화살표에 "Product Image/Event"라고 적혀 있다. 이미지를 MQTT에 싣지 않는다는
+    3.3절, 5.4절과 표현이 어긋나 보인다. 정정이 필요한가?
+requested_action: "각 질문의 담당(계약 변경 승인 책임자, 관련 Component)이 답이나 결정을 후속 MESSAGE 또는 DOCUMENT_CHANGE로 남겨 주세요. Q-9·Q-14는 factory-simulator, Q-14·Q-15는 factory-operations, Q-12는 integration의 확인이 필요합니다."
+evidence:
+  - "vision-inspection 아키텍처 초안 11.1절(질문 목록): https://github.com/dltndn-personal-project/smart-factory-vision-inspection/blob/4eff75a447cc761abf8a3185e262a53b9f015574/docs/ARCHITECTURE.md"
+  - "초안 PR(merge됨): https://github.com/dltndn-personal-project/smart-factory-vision-inspection/pull/2"
+follow_up:
+  owner: "계약 변경 승인 책임자 (ARCHITECTURE 19절)"
+  done_when: "8개 질문 각각에 대한 답이나 결정이 후속 MESSAGE 또는 DOCUMENT_CHANGE로 게시된다"
