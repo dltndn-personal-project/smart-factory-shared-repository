@@ -1,3 +1,15 @@
 {
-  "issues": []
+  "issues": [
+    {
+      "issue_id": "ISSUE-a47146af-bbf3-4aa3-bfed-5cdcc64a16b5",
+      "type": "MESSAGE",
+      "summary": "Vision AI 판정을 현재 범위에서 제외하고 pass-through로 전환하는 제안과 계약 변경 승인 책임자 지정 요청",
+      "attention": [
+        "factory-simulator",
+        "factory-operations",
+        "integration"
+      ],
+      "path": "issues/ISSUE-a47146af-bbf3-4aa3-bfed-5cdcc64a16b5.yaml"
+    }
+  ]
 }
