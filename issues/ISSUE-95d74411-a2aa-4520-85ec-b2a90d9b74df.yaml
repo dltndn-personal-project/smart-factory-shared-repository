@@ -1,0 +1,33 @@
+issue_id: "ISSUE-95d74411-a2aa-4520-85ec-b2a90d9b74df"
+type: DOCUMENT_CHANGE
+source:
+  component: "shared-repository"
+  task: "user-decision-D-1"
+created_at: "2026-09-25T08:40:31Z"
+summary: "계약 변경 승인 책임자를 @dltndn으로 지정 (ARCHITECTURE 19절, CODEOWNERS)"
+attention:
+  - factory-simulator
+  - predictive-maintenance
+  - vision-inspection
+  - factory-operations
+  - integration
+related_issues:
+  - ISSUE-a47146af-bbf3-4aa3-bfed-5cdcc64a16b5
+reason: |
+  사용자 결정 D-1(2026-09-24): 계약 변경 승인 책임자는 사용자 본인이며 GitHub 계정은 @dltndn이다.
+  ISSUE-a47146af-bbf3-4aa3-bfed-5cdcc64a16b5(I-1) requested_action (2)의 승인 책임자 지정 요청을 반영한다.
+  ARCHITECTURE 19절은 "`미정` 항목은 첫 운영 Issue를 게시해 초기화 기간을 끝내기 전에 채운다"고 정한다.
+  그러나 계약 변경 승인 책임자가 미정인 채로 첫 운영 Issue(I-1, I-4)가 merge되어 초기화 기간이 끝났다.
+  이 변경은 초기화 기간 안에 채웠어야 했던 항목을 늦게 채우는 것이며, 초기화 기간이 끝났으므로 DOCUMENT_CHANGE로 게시한다.
+  승인 책임자가 없으면 이후 DOCUMENT_CHANGE를 승인할 주체가 없고, CODEOWNERS placeholder 때문에 새 MESSAGE PR의 CI 자동 승인도 동작하지 않는다.
+  19절의 다른 미정 항목(Component 소유자, 통합·릴리스 조건 세부)은 이 변경 범위에 포함하지 않는다.
+changed_documents:
+  - file: docs/ARCHITECTURE.md
+    section: "19. Repository & Governance - 계약 변경 승인 책임자"
+change:
+  before: "계약 변경 승인 책임자: 미정. .github/CODEOWNERS의 `*` 소유자는 placeholder(@<계약-승인-책임자>)였다."
+  after: "계약 변경 승인 책임자: @dltndn. .github/CODEOWNERS의 `*` 소유자도 @dltndn으로 지정한다."
+compatibility: "Interface, Payload, ID·시간 규칙, agent-core는 바뀌지 않으므로 기존 Component 구현에 영향이 없다. 바뀌는 것은 Shared 계약 변경의 승인 주체다. 이후 DOCUMENT_CHANGE와 Issue 외 변경은 @dltndn의 CODEOWNERS 승인을 받는다. 새 MESSAGE만 추가한 PR은 scripts/auto_approval.py 기준으로 자동 승인 대상이 된다. 실제 자동 승인·merge에는 README 자동 승인 절의 저장소 설정이 추가로 필요하다."
+transition:
+  adoption: "merge되는 즉시 Shared PR의 승인 주체로 적용된다. Component는 Shared 검토에서 이 Issue를 확인하고, 구현 변경 없이 다음 contract_ref 갱신 때 함께 채택한다. 적용 확인은 merge 이후 base로 scripts/auto_approval.py를 실행해 CODEOWNERS 문제가 보고되지 않는 것으로 한다."
+  rollback: "ARCHITECTURE 19절 복구 방법에 따라 이 변경 직전의 계약 commit(c5f9def6cbcf59c6e0a61a24861d84204b14d590)의 승인 책임자 표기로 되돌린다. 운영 기간이므로 되돌리는 변경도 새 DOCUMENT_CHANGE로 게시한다. Component 구현 변경이 없으므로 Component commit 조합은 바꿀 필요가 없다."

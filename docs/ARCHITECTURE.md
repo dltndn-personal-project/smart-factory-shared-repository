@@ -1306,7 +1306,7 @@ Monitoring / Alarm / Interlock
 | (Runtime 컴포넌트 아님) Integration | `integration` | 19.1 | 미정 |
 
 - 공용 계약 저장소: 이 저장소. 계약 문서는 `docs/ARCHITECTURE.md`, `docs/INTERFACES.md`, `docs/CONVENTIONS.md`이다.
-- 계약 변경 승인 책임자: 미정 (`.github/CODEOWNERS`에도 같은 책임자를 지정)
+- 계약 변경 승인 책임자: `@dltndn` (`.github/CODEOWNERS`에도 같은 책임자를 지정)
 - 통합·릴리스 조건: 2절의 성능 기준 측정 결과와 7절 주요 데이터 흐름의 End-to-End 동작을 `integration`이 고정된 Component 조합에서 확인한다. 세부 조건은 미정.
 - 복구 방법: 마지막으로 검증된 Component commit 조합과 계약 commit으로 되돌린다.
 
