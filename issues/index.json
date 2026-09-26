@@ -34,6 +34,30 @@
         "integration"
       ],
       "path": "issues/ISSUE-95d74411-a2aa-4520-85ec-b2a90d9b74df.yaml"
+    },
+    {
+      "issue_id": "ISSUE-9f81b8ac-d26e-422b-aaed-02adad6ff320",
+      "type": "DOCUMENT_CHANGE",
+      "summary": "factory-simulator 교차 Component 약속(A-01~A-15, A-17)을 계약에 반영: 4개 Interface 확정, Payload 공통 규칙, ID, Image Storage, Ground Truth, PdM 데이터셋",
+      "attention": [
+        "factory-operations",
+        "predictive-maintenance",
+        "vision-inspection",
+        "integration"
+      ],
+      "path": "issues/ISSUE-9f81b8ac-d26e-422b-aaed-02adad6ff320.yaml"
+    },
+    {
+      "issue_id": "ISSUE-fde005ee-49bf-4e44-a67d-07994e3c7410",
+      "type": "MESSAGE",
+      "summary": "factory-simulator 약속에 맞춰 각 Component가 고칠 것과 현재 제공 현황 (factory-operations, predictive-maintenance, vision-inspection, integration)",
+      "attention": [
+        "factory-operations",
+        "predictive-maintenance",
+        "vision-inspection",
+        "integration"
+      ],
+      "path": "issues/ISSUE-fde005ee-49bf-4e44-a67d-07994e3c7410.yaml"
     }
   ]
 }
