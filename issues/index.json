@@ -58,6 +58,17 @@
         "integration"
       ],
       "path": "issues/ISSUE-fde005ee-49bf-4e44-a67d-07994e3c7410.yaml"
+    },
+    {
+      "issue_id": "ISSUE-c8fad59b-796c-42aa-b969-be0be65eae43",
+      "type": "DOCUMENT_CHANGE",
+      "summary": "Vision AI 판정을 현재 범위에서 제외(pass-through)하고, Ground Truth 파일에서 판정값을 옮기는 입력 경로와 Vision Result Interface를 확정",
+      "attention": [
+        "factory-simulator",
+        "factory-operations",
+        "integration"
+      ],
+      "path": "issues/ISSUE-c8fad59b-796c-42aa-b969-be0be65eae43.yaml"
     }
   ]
 }
