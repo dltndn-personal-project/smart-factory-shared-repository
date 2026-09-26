@@ -21,6 +21,19 @@
         "integration"
       ],
       "path": "issues/ISSUE-63f6789a-a26b-42a4-8b3c-3dcfeaa07e1f.yaml"
+    },
+    {
+      "issue_id": "ISSUE-95d74411-a2aa-4520-85ec-b2a90d9b74df",
+      "type": "DOCUMENT_CHANGE",
+      "summary": "계약 변경 승인 책임자를 @dltndn으로 지정 (ARCHITECTURE 19절, CODEOWNERS)",
+      "attention": [
+        "factory-simulator",
+        "predictive-maintenance",
+        "vision-inspection",
+        "factory-operations",
+        "integration"
+      ],
+      "path": "issues/ISSUE-95d74411-a2aa-4520-85ec-b2a90d9b74df.yaml"
     }
   ]
 }
