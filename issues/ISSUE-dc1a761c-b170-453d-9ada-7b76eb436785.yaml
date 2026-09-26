@@ -1,0 +1,75 @@
+issue_id: "ISSUE-dc1a761c-b170-453d-9ada-7b76eb436785"
+type: MESSAGE
+source:
+  component: "factory-simulator"
+  task: "H-2"
+created_at: "2026-09-26T03:20:15Z"
+summary: "factory-simulator 약속에 맞춰 각 Component가 고칠 것과 제공 시점 (factory-operations, predictive-maintenance, vision-inspection, integration)"
+attention:
+  - factory-operations
+  - predictive-maintenance
+  - vision-inspection
+  - integration
+related_issues:
+  - ISSUE-a47146af-bbf3-4aa3-bfed-5cdcc64a16b5
+  - ISSUE-63f6789a-a26b-42a4-8b3c-3dcfeaa07e1f
+  - ISSUE-5a132e48-e8ff-465f-8c86-9d503eca4bd6
+observation: |
+  [전제]
+  - 계약 변경은 DOCUMENT_CHANGE ISSUE-5a132e48-e8ff-465f-8c86-9d503eca4bd6(같은 PR). 형식 원문은 그 변경 뒤의 INTERFACES·CONVENTIONS.
+  - 근거와 세부: factory-simulator docs/spec/AGREEMENTS.md A-01~A-17(main@285823cbee8d9409b3bd7d08fe5aa4e97a955567). 책임자 결정으로 이 파일이 구현 기준이고 다른 Component가 맞춘다.
+  - 아래 [A-xx]는 AGREEMENTS 항목 ID.
+
+  [factory-operations]
+  1. Line Status `factory/line/status` 구독(QoS 1, retain). Dashboard Conveyor Status·Current Fault Level은 여기서 읽는다. `online:false`(LWT, 다른 필드 없음) 처리. [A-12]
+  2. Conveyor Control 발행: `{"schema_version":1,"command":"STOP"|"START","command_id":..., "timestamp":..., "reason":...}`, QoS 1, retain false. 결과는 Line Status `last_command.command_id`·`result`(APPLIED|NO_CHANGE|REJECTED)로 확인. 응답 Topic 없음. retained 명령은 거부된다. [A-11]
+  3. TimescaleDB 적재: 센서는 0.1초 chunk(3축 1,000샘플 배열) 단위. 권장 chunk당 한 행(`timestamp`, `sensor_id`, `seq`, `rpm`, `temperature`, 세 축 `real[]`, `fault_level`). 샘플 전개면 초당 10,000행. [A-03]
+  4. 센서에 `fault_level` 없음. 필요하면 Line Status as-of join(chunk `timestamp` 이하 최신 Line Status, 없으면 null). Topic 간 도착 순서 보장 없음. [A-04]
+  5. Product Created `timestamp`는 캡처 시각. 불량은 투입 시점 진동으로 결정되며 투입→캡처 약 13.3초. Time Lag 분석에 반영. [A-06]
+  6. `product_id` 빈 번호 허용. production sequence = `product_id` 숫자 부분(별도 필드 없음). [A-09]
+  7. (선택) 평가에 `ground_truth/products.jsonl` 사용 가능. 추론·판단 입력 금지. [A-08]
+
+  [predictive-maintenance]
+  1. Sensor Vibration chunk 파싱. 1초 윈도우 = 연속 `seq` 10개 이어 붙이기(BPFO 107.5 Hz 분해). `seq` 건너뜀 = 빈 구간, 감소 = 재기동. QoS 0이라 유실 가능. [A-01, A-03]
+  2. `rpm == 0` chunk(정지 중, 노이즈만) 처리 방침 결정. 권장: 판정 보류, 직전 상태 유지. [A-05]
+  3. 학습 데이터: `dataset-pdm` 산출물(`manifest.json` + `segments/*.npy`). factory-simulator 이미지로 직접 생성 가능(`docker run --rm -v "$PWD/pdm-data:/out" <이미지> dataset-pdm --out /out/<이름>`). 라벨은 구간 단위 `fault_level`·`severity`. Equipment State 대응과 윈도우 분할은 PdM이 정한다. [A-13]
+  4. PdM Inference 100 ms 측정 구간: 윈도우의 마지막 센서 메시지 수신 → PdM Result 발행. [A-14]
+  5. PdM Result 등 자기 Payload에도 CONVENTIONS 공통 규칙 적용 권장(밀리초 timestamp, `schema_version`, 대문자 Equipment State). [A-02]
+
+  [vision-inspection]
+  1. Product Created 파싱: `schema_version`, `product_id`, 밀리초 `timestamp`, `image_path`. 모르는 필드 무시. QoS 1. [A-01, A-06]
+  2. 이미지 전제: JPEG 640×640, 칩 하나가 중앙 근처, 결함은 윗면만. `products/`의 점 파일(`.P-*.jpg.tmp`) 무시. [A-07]
+  3. factory-simulator는 Vision 학습·평가 전용 이미지를 만들지 않는다(`training/`, `evaluation/` 미기록). 학습 데이터 출처는 vision-inspection이 정한다. [A-15]
+  4. (선택) runtime 이미지 + `ground_truth/products.jsonl`의 `bbox`·`defect_type`로 오프라인 평가·학습 데이터 구성 가능. Fault Level 10(불량 60%)과 설정 `render.randomization.enabled: true`로 수집. 속도는 분당 30개 고정(시간 가속 없음). [A-16]
+  5. `gradcam/`을 쓰려면 볼륨 쓰기 권한 마운트가 필요하다(integration과 조율). [A-17]
+
+  [integration]
+  1. compose: `eclipse-mosquitto:2.1.2-alpine`(`-c /mosquitto-no-auth.conf`, 익명, 1883). factory-simulator 서비스: 저장소 루트 Dockerfile 빌드, env `MQTT_URL=mqtt://mosquitto:1883`, `IMAGE_ROOT=/data`, 포트 `127.0.0.1:8000:8000`, root 실행. [A-17]
+  2. Image Storage: Docker named volume(호스트 bind mount 금지). factory-simulator·vision-inspection(gradcam) 쓰기, 나머지 `:ro`. [A-07, A-17]
+  3. 기동 확인 `GET http://factory-simulator:8000/healthz` 200. Broker가 늦게 떠도 재연결한다. [A-17]
+  4. 초기화: 볼륨과 DB를 함께 지운다(볼륨을 지우면 `product_id`가 1부터 다시 시작). [A-09]
+  5. 제품 이미지는 브라우저 화면이 열려 있는 동안만 생긴다. 브라우저 없는 E2E는 센서·Line Status만 나온다. 제품 흐름 자동 검증은 factory-simulator `scripts/fake_renderer.py` 사용(RUN-2에서 추가 예정). [A-17]
+  6. Interface 준수 검사: MQTT Payload에 Ground Truth 필드(INTERFACES Ground Truth 표)가 없는지. PdM 100 ms는 A-14 구간으로 측정. [A-08, A-14]
+
+  [제공 시점 (factory-simulator main@285823c 기준)]
+  - 완료: 에셋, server 코어(진동 chunk 생성, 상태, 투입), WebSocket·HTTP, web 3D 씬. MQTT 발행은 아직 없다.
+  - 다음: SRV-5(이미지 저장·Ground Truth) → SRV-6(MQTT: Sensor Vibration·Line Status·Product Created 발행, Conveyor Control 수신) → SRV-7(dataset-pdm), WEB-3(캡처·업로드). 이 task들이 merge되면 MQTT와 파일 Interface를 실제로 쓸 수 있다.
+  - 그 뒤 RUN-1(Dockerfile, compose), RUN-2(가짜 렌더러, smoke). 날짜 약속은 없다. 진행은 factory-simulator agent/PLAN.yaml과 main 이력으로 확인한다.
+
+  [I-1, I-4와의 관계]
+  - I-1 requested_action (3) "Simulator의 Vision 학습 데이터셋 생성 유지 여부": 생성하지 않는다(A-15, 책임자 확정).
+  - I-1 pass-through: 현재 약속에서 runtime 결함 정보는 Product Created에 없고(A-06), Ground Truth 파일은 평가·검증 전용이다(A-08). pass-through를 채택하면 불량 정보 전달 경로를 I-2 등에서 별도로 정해야 하며, 이 Issue는 그것을 정하지 않는다.
+  - I-4 답: Q-6 밀리초 3자리 고정. Q-7 factory-simulator 4개 Topic의 QoS·retain 확정(공통 client id 규칙은 없음). Q-9 유일성 범위 = Image Storage 볼륨 수명, production sequence = `product_id` 숫자 부분이라 Vision Result에 따로 실을 필요 없음. Q-12 Docker Compose + named volume(마운트 경로는 integration). Q-14 생산 속도 분당 30개(2초에 1개), 시간 가속 없음.
+  - I-4 미답: Q-9 형식 불일치 처리, Q-11 Inspection Image, Q-14 Vision 지연 목표, Q-15 Vision 오류 표현, Q-17 6절 그림 문구, Vision 처리 시각 필드. factory-simulator 약속 범위 밖이다.
+
+  [불확실한 부분]
+  - 계약 변경 승인 책임자 지정(PR #2, ISSUE-95d74411…)이 아직 merge되지 않았다. 이 PR의 승인 주체는 그 결과에 따른다.
+requested_action: "각 수신 Component는 자기 절의 항목을 검토해 영향과 조치를 기록하고 구현을 맞춰 주세요. 형식에 이견이 있으면 이 Issue ID를 related_issues에 넣어 MESSAGE로 알려 주세요. integration은 위 조건으로 compose와 검증 조합을 정의해 주세요."
+evidence:
+  - "AGREEMENTS(구현 기준): https://github.com/dltndn-personal-project/smart-factory-simulator/blob/285823cbee8d9409b3bd7d08fe5aa4e97a955567/docs/spec/AGREEMENTS.md"
+  - "DECISIONS D-04(AGREEMENTS를 구현 기준으로 하는 책임자 결정): https://github.com/dltndn-personal-project/smart-factory-simulator/blob/285823cbee8d9409b3bd7d08fe5aa4e97a955567/docs/spec/DECISIONS.md"
+  - "계획 개요(task 순서): https://github.com/dltndn-personal-project/smart-factory-simulator/blob/285823cbee8d9409b3bd7d08fe5aa4e97a955567/docs/plan/00-overview.md"
+  - "참고한 Shared 기준: c5f9def6cbcf59c6e0a61a24861d84204b14d590 (factory-simulator contract_ref는 null)"
+follow_up:
+  owner: "각 수신 Component(factory-operations, predictive-maintenance, vision-inspection, integration)"
+  done_when: "각 Component가 이 Issue와 ISSUE-5a132e48-e8ff-465f-8c86-9d503eca4bd6의 처리 상태를 기록하고, integration이 고정 조합 E2E에서 4개 Interface 형식을 확인한다"

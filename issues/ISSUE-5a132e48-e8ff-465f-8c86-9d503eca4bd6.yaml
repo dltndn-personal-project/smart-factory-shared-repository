@@ -1,0 +1,66 @@
+issue_id: "ISSUE-5a132e48-e8ff-465f-8c86-9d503eca4bd6"
+type: DOCUMENT_CHANGE
+source:
+  component: "factory-simulator"
+  task: "H-2"
+created_at: "2026-09-26T03:20:15Z"
+summary: "factory-simulator 교차 Component 약속(A-01~A-15, A-17)을 계약에 반영: 4개 Interface 확정, Payload 공통 규칙, ID, Image Storage, Ground Truth, PdM 데이터셋"
+attention:
+  - factory-operations
+  - predictive-maintenance
+  - vision-inspection
+  - integration
+related_issues:
+  - ISSUE-a47146af-bbf3-4aa3-bfed-5cdcc64a16b5
+  - ISSUE-63f6789a-a26b-42a4-8b3c-3dcfeaa07e1f
+reason: |
+  책임자 요청(2026-09-26 채팅): factory-simulator의 계획·아키텍처 결정을 Shared에 게시해 다른 Component가 맞추게 한다.
+  근거는 factory-simulator `docs/spec/AGREEMENTS.md`(main@285823cbee8d9409b3bd7d08fe5aa4e97a955567).
+  책임자 결정(2026-09-25, 같은 저장소 DECISIONS D-04)으로 이 파일이 교차 Component 항목의 구현 기준이고, 다른 Component가 이에 맞춘다.
+  현재 계약(INTERFACES)은 Payload Schema 미정, 모든 Interface 후보 상태. CONVENTIONS의 밀리초·이름·단위·오류·ID 범위·실행 방식이 미정.
+  ARCHITECTURE 4.1·5.2의 센서 `fault_level` 포함과 4.1 Vision Dataset Generation이 factory-simulator 결정과 다르다.
+  factory-simulator는 이 기준으로 구현 중이다(server 코어·web 씬 merge됨, MQTT 발행 미구현).
+changed_documents:
+  - file: docs/ARCHITECTURE.md
+    section: "2절 PdM Inference 측정 구간, 4.1 Synthetic Sensor Generation·Vision Dataset Generation(→ Runtime Image Randomization)·PdM Training Data Generation, 5.1 Topic 구조, 5.2 최소 데이터 구조, 5.4 Image Storage, 8절 Vision Ground Truth, 17절 책임표"
+  - file: docs/INTERFACES.md
+    section: "Interface 목록(QoS·retain·상태), Sensor Vibration, Product Created, Conveyor Control, Line Status, Image Reference, Ground Truth, PdM 학습 진동 데이터셋 (신설·전면 개정)"
+  - file: docs/CONVENTIONS.md
+    section: "Timestamp, ID, Ground Truth, Payload·이름·단위·오류 표현, 실행 환경과 설정"
+change:
+  before: |
+    - INTERFACES: 7개 Interface 모두 후보, Payload Schema·QoS·retain 미정. Image Reference 표에서 `training/`·`evaluation/` 기록자가 factory-simulator.
+    - CONVENTIONS: 밀리초 자릿수, 필드 이름 규칙, 물리 단위, 오류 표현, sensor_id 형식, product_id 유일성 범위, production sequence, 공통 실행 방식 모두 미정. 버전 필드 규칙 없음.
+    - ARCHITECTURE: 센서 최소 데이터가 샘플 단위이고 `fault_level` 포함(4.1, 5.2). Simulator가 Vision 학습 이미지를 Domain Randomization으로 생성(4.1). Ground Truth는 "Evaluation Dataset에서 별도 관리"(8절)로 위치·형식 없음. PdM Inference 100ms 측정 구간 없음. 5.1 Topic 그림에 `line/status` 없음.
+  after: |
+    - INTERFACES: Sensor Vibration(QoS 0), Product Created(QoS 1), Line Status(QoS 1, retain), Conveyor Control(QoS 1, retain false) 확정, schema_version 1. [A-01, A-03~A-06, A-11, A-12]
+      - 센서: 10 kHz, 0.1초 chunk마다 3축 1,000샘플 배열, `seq`, `rpm`, `temperature`. `fault_level` 없음. 정지 중에도 `rpm: 0`으로 계속 발행.
+      - Product Created: `schema_version`, `product_id`, 밀리초 `timestamp`(캡처 시각), `image_path`. 이미지 JPEG 640×640.
+      - Conveyor Control: `START`|`STOP`, `command_id` 필수. 결과는 Line Status `last_command`. retained 명령 거부.
+      - Line Status: 변경 즉시 + 1초 주기, `online`(LWT), `conveyor`, `fault_level`, `last_command` 등.
+    - Image Storage: `ground_truth/` 추가, `products/` 임시 점 파일 규칙, `training/`·`evaluation/` 기록자를 vision-inspection(필요하면)으로 변경. [A-07]
+    - runtime Ground Truth `ground_truth/products.jsonl` 형식·용도 제한 신설. [A-08]
+    - PdM 학습 진동 데이터셋(`.npy` + `manifest.json`, `dataset-pdm` 명령, 결정성) 신설. [A-13]
+    - CONVENTIONS: timestamp 밀리초 3자리 고정, snake_case·대문자 열거값, `schema_version`과 모르는 필드 무시, 단위(g, °C, rev/min, m, px), 오류 응답 Topic 없음, `sensor_id` 정규식, `product_id` 유일성 = Image Storage 볼륨 수명, production sequence = `product_id` 숫자, Docker Compose + named volume. [A-02, A-09, A-10, A-17]
+    - ARCHITECTURE: 4.1·5.2 센서 chunk와 `fault_level` 제외(Line Status as-of join), 4.1 Vision Dataset Generation → Runtime Image Randomization(학습 이미지 미생성), PdM Training Data Generation 추가, 5.1 `line/status`, 5.4 `ground_truth/`, 8절 Ground Truth 위치, 2절 PdM Inference 측정 구간, 17절 책임표 2행 추가. [A-04, A-13~A-15]
+    - 반영하지 않음: A-16(선택 사항, 문서 변경 없음). A-17의 compose 세부(Mosquitto 2.1.2-alpine, 포트, healthz, root 실행, 가짜 렌더러)는 integration 대상이라 계약 문서에 넣지 않고 함께 게시하는 MESSAGE와 AGREEMENTS에 둔다.
+compatibility: |
+  Breaking change다. 기존 계약은 후보·미정이었으므로 이를 따른 확정 구현은 없다고 판단하나, 후보 Topic과 ARCHITECTURE 예시(샘플 단위 센서, `fault_level` 포함, 밀리초 없는 timestamp)대로 이미 만든 코드가 있으면 바꿔야 한다.
+  - factory-operations: TimescaleDB 적재를 chunk 형식으로, `fault_level`은 Line Status as-of join. Line Status 구독(retain, `online:false`). Conveyor Control 발행 형식.
+  - predictive-maintenance: chunk 파싱과 `seq` 기반 윈도우 구성, `rpm == 0` 처리, 데이터셋 로더, 100ms 측정 구간. Equipment State 대문자 표기(CONVENTIONS 열거값 규칙).
+  - vision-inspection: Product Created 파싱(`schema_version`, 모르는 필드 무시), 이미지 형식 전제, 점 파일 무시. Simulator는 `training/`·`evaluation/`에 쓰지 않는다.
+  - integration: 볼륨(named volume, 권한), 초기화 절차(볼륨과 DB 함께), Ground Truth 필드 목록 기준 검사.
+  각 Component 조치 목록과 제공 시점은 같은 PR의 MESSAGE ISSUE-dc1a761c-b170-453d-9ada-7b76eb436785.
+  기존 Issue와의 관계:
+  - I-1(ISSUE-a47146af…): 이 변경은 2절 Vision 성능 기준, 4.3, 7.2, 17절 Defect Detection·Grad-CAM, 19절을 바꾸지 않는다. I-1의 범위 축소 채택 여부와 무관하게 성립한다. I-1이 물은 "Simulator의 Vision 학습 데이터셋 생성 유지 여부"는 4.1 변경(생성하지 않음)으로 답한다. I-1의 pass-through 방식은 Simulator 불량 정보를 runtime에 받아야 하나, 이 변경은 Product Created에서 결함 정보를 빼고(8절) Ground Truth 파일을 평가·검증 전용으로 제한한다. pass-through 채택 시 전달 경로는 별도 결정이 필요하다(I-1이 예고한 I-2).
+  - I-4(ISSUE-63f6789a…): Q-6(밀리초), Q-7(4개 Topic의 QoS·retain), Q-9(product_id 유일성·production sequence), Q-12(Docker Compose·named volume), Q-14 일부(생산 분당 30개는 MESSAGE에)에 답한다. Q-9 형식 불일치 처리, Q-11, Q-15(Vision 결과의 오류 표현), Q-17, Vision 처리 시각 필드, 공통 client id 규칙은 이 변경에서 정하지 않는다.
+  - 열린 PR #2(ISSUE-95d74411…, 승인 책임자 지정)와 내용 충돌 없음(19절 미수정). 색인 끝 추가가 겹치므로 늦게 merge되는 쪽이 최신 main 기준으로 재정렬한다.
+  반영하지 않은 불일치: ARCHITECTURE 16절 "Domain Randomization, Image Generation"은 AGREEMENTS의 변경 대상이 아니라 그대로 두었다. 4.1 변경과 함께 읽으면 runtime 이미지 생성과 약한 Randomization으로 해석된다. 표현 정리가 필요하면 별도 DOCUMENT_CHANGE로 한다.
+transition:
+  adoption: |
+    계약 변경 승인 책임자 승인 후 merge. 각 Component는 Shared 검토에서 이 Issue를 읽고 영향 판단을 기록한 뒤 이 merge commit을 contract_ref로 채택한다.
+    factory-simulator는 구현 기준(AGREEMENTS)이 이미 같으므로, 책임자가 요청하면 merge 뒤 contract_ref를 이 commit으로 바꾼다(factory-simulator HUMAN H-2 4단계, 선택).
+    검증: factory-simulator는 자체 테스트(MQTT 연동 SRV-6, compose smoke RUN-2)로 형식을 확인한다. 시스템 호환은 integration이 COMPOSITION.json에 고정한 조합에서 7.1~7.3 E2E로 확인한다.
+  rollback: |
+    ARCHITECTURE 19절 복구 방법: 마지막으로 검증된 Component commit 조합과 계약 commit(c5f9def6cbcf59c6e0a61a24861d84204b14d590)으로 되돌린다. 운영 기간이므로 되돌리는 변경도 새 DOCUMENT_CHANGE로 게시한다.
+    factory-simulator 구현은 AGREEMENTS를 따르므로 계약만 되돌리면 구현과 계약이 다시 어긋난다. 되돌릴 때는 AGREEMENTS 수정 여부를 함께 결정해야 한다.
