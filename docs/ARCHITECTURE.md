@@ -46,8 +46,8 @@
 
 단, 과제에서 명시적으로 요구하는 다음 성능 기준은 평가 대상이므로 반드시 충족하고 측정한다.
 
-* Vision Model `mAP@0.5 ≥ 0.80`
-* Vision Inference `20 FPS 이상`
+* Vision Model `mAP@0.5 ≥ 0.80` — 현재 범위 제외 (4.3절 현재 범위)
+* Vision Inference `20 FPS 이상` — 현재 범위 제외 (4.3절 현재 범위)
 * PdM Model `F1-Score ≥ 0.80`
 * PdM Inference `100ms 이내`
 * Dashboard 데이터 `5초 이내 갱신`
@@ -137,6 +137,7 @@ Ground Truth는 다음 목적으로만 사용한다.
 * 모델 성능 평가
 * 시뮬레이터 검증
 * 디버깅
+* 현재 범위의 Vision pass-through 결과(4.3절 현재 범위, 8절 Vision). AI 추론 입력은 아니다
 
 ---
 
@@ -389,6 +390,16 @@ Vision Quality Inspection은 Simulator가 생성한 제품 이미지를 분석�
 
 > Product Image를 Quality Information으로 변환한다.
 
+### 현재 범위 (AI 판정 제외, pass-through)
+
+과제 출제자의 승인을 받아(16절 Simulator 변경과 같은 방식) 이번 프로젝트에서 Vision Quality Inspection은 AI 모델 판정을 하지 않는다. YOLOv8/EfficientDet 결함 검출, Grad-CAM, 모델 학습·평가, 2절의 Vision 성능 기준(mAP@0.5, 20 FPS)은 **현재 범위 제외**다. 아래 Input 이후의 Processing Pipeline과 Output 예시는 모델 판정을 전제로 한 원래 설계이며, 현재 범위에서는 적용하지 않는다.
+
+현재 범위에서 Vision은 Factory Simulator가 제공하는 제품별 불량 정보(불량 여부, 결함 유형)를 판정하지 않고 그대로 옮겨 Vision Result로 발행한다(pass-through). 판정 출처는 Vision Result의 `judgement_source: "PASS_THROUGH"`로 표시한다. 형식은 `docs/INTERFACES.md` Vision Result.
+
+- 불량 정보를 Vision이 받는 경로는 이 절에서 정하지 않는다. 8절 Ground Truth 규칙과 함께 후속 DOCUMENT_CHANGE로 정한다. 정해지기 전에는 Vision Result를 발행할 수 없다.
+- 모델 판정으로 돌아가려면 새 DOCUMENT_CHANGE로 제안한다. 그때는 이 절을 지우고 아래 원래 설계를 다시 적용한다.
+- 입력 수신·검증, 이미지 참조, ID·Timestamp 정책, 결과 발행은 이 문서의 다른 절과 `docs/INTERFACES.md`, `docs/CONVENTIONS.md`를 그대로 따른다.
+
 ---
 
 ### Input
@@ -451,7 +462,7 @@ Inspection Result
 }
 ```
 
-검사 결과는 MQTT를 통해 Factory Operations & Control로 전달한다.
+검사 결과는 MQTT를 통해 Factory Operations & Control로 전달한다. 확정 형식은 `docs/INTERFACES.md` Vision Result다. 현재 범위에서는 `confidence`, `bbox`, `gradcam_path`가 `null`이다.
 
 ---
 
@@ -466,6 +477,7 @@ Vision Quality Inspection은 다음을 담당하지 않는다.
 * 설비 상태 결정
 * 전체 불량률 관리
 * 시스템 Dashboard 관리
+* AI 모델 판정과 Grad-CAM (현재 범위 제외, 위 현재 범위 참고)
 
 ---
 
@@ -508,6 +520,8 @@ PdM과 Vision에서 생성된 분석 결과를 수집하고, 공장 운영 상�
 * BBox
 * Image Reference
 * Grad-CAM Reference
+
+현재 범위에서 Vision Result의 결함 판정은 Simulator 불량 정보를 옮긴 값이고(`judgement_source: "PASS_THROUGH"`), Confidence·BBox·Grad-CAM Reference는 `null`이다(4.3절 현재 범위).
 
 ---
 
@@ -622,8 +636,8 @@ Alarm History는 데이터베이스에 저장한다.
 * Equipment State
 * 최근 Vision Inspection
 * Defect Type
-* Confidence
-* Grad-CAM Result
+* Confidence (현재 범위에서는 비어 있음)
+* Grad-CAM Result (현재 범위에서는 비어 있음)
 * Defect Rate
 * 설비-품질 상관관계
 * Alarm History
@@ -912,6 +926,8 @@ Simulator
             Operations
 ```
 
+현재 범위(4.3절)에서는 Inference와 Grad-CAM 단계가 없다. Vision은 Simulator 불량 정보를 받아 Vision Inspection Event(Vision Result)로 옮긴다. 불량 정보의 전달 경로는 후속 DOCUMENT_CHANGE로 정한다.
+
 ---
 
 ## 7.3 Production Control Flow
@@ -977,6 +993,8 @@ Inference 입력:
 ```
 
 Ground Truth는 Image Storage의 `ground_truth/products.jsonl`에 별도로 기록하고 MQTT로 전달하지 않는다. 평가·학습 데이터 구성·검증·디버깅에만 쓰며 AI 추론 입력으로 읽지 않는다 (`docs/INTERFACES.md` Ground Truth).
+
+현재 범위 예외(4.3절 현재 범위): Vision은 AI 추론을 하지 않고 Simulator 불량 정보를 Vision Result로 옮긴다. 그래서 Vision Result의 `defect`, `defect_type`은 Ground Truth와 같은 값이며 MQTT로 전달된다. 이 값은 `judgement_source: "PASS_THROUGH"`로 표시하며 AI 추론 입력이 아니다. AI 추론 입력(Product Created 등)에 Ground Truth를 넣지 않는 규칙은 그대로다. Vision이 불량 정보를 받는 경로는 후속 DOCUMENT_CHANGE로 정한다.
 
 ---
 
@@ -1244,8 +1262,8 @@ Three.js Simulator는 전체 제조 공정의 물리적 정확성을 재현하�
 | Feature Extraction     | X                 | O            | X                 | X                    |
 | Autoencoder            | X                 | O            | X                 | X                    |
 | Health Index           | X                 | O            | X                 | Consume              |
-| Defect Detection       | X                 | X            | O                 | Consume              |
-| Grad-CAM               | X                 | X            | O                 | Consume              |
+| Defect Detection       | X                 | X            | O (현재 범위: pass-through) | Consume              |
+| Grad-CAM               | X                 | X            | O (현재 범위 제외) | Consume              |
 | Correlation Analysis   | X                 | X            | X                 | O                    |
 | Alarm Management       | X                 | State Event  | X                 | O                    |
 | Conveyor Stop Decision | X                 | X            | X                 | O                    |
@@ -1271,7 +1289,7 @@ Predictive Maintenance Engine
 = Equipment Intelligence
 
 Vision Quality Inspection
-= Quality Intelligence
+= Quality Intelligence (현재 범위: 품질 결과 중계, 4.3절)
 
 Factory Operations & Control
 = Integration, Monitoring & Control
@@ -1329,12 +1347,12 @@ Factory Operations & Control의 Integration(4.4절)은 Runtime 데이터 통합�
 * 검증 조합 고정(`COMPOSITION.json`)과 검증 기록(`VALIDATION.md`)
 * 7절 주요 데이터 흐름의 End-to-End 시나리오 검증
 * Interface 준수 검사: Payload Schema, ID 형식(`docs/CONVENTIONS.md`), AI 추론 입력의 Ground Truth 미포함(8절)
-* 시스템 수준 성능 측정: Dashboard 5초 이내 갱신, 통합 환경에서의 Vision FPS와 PdM Inference 시간(2절)
+* 시스템 수준 성능 측정: Dashboard 5초 이내 갱신, 통합 환경에서의 Vision FPS와 PdM Inference 시간(2절). Vision FPS는 현재 범위 제외(4.3절)
 * 교차 Component 문제의 관찰·재현 근거 기록과 Shared MESSAGE 게시
 
 담당하지 않음:
 
-* 모델 지표(mAP@0.5, F1-Score) 산출. 평가 데이터셋을 가진 각 Component가 측정하고 `integration`은 결과를 수집한다
+* 모델 지표(mAP@0.5, F1-Score) 산출. 평가 데이터셋을 가진 각 Component가 측정하고 `integration`은 결과를 수집한다. Vision mAP@0.5는 현재 범위 제외(4.3절)
 * 다른 Component의 구현 수정과 Runtime 로직
 * 계약 결정 (계약 변경 승인 책임자가 결정한다)
 * DB 테이블 스키마(DDL) 작성과 데이터베이스 기록 (Factory Operations & Control 소유, 4.4절 Data Persistence)

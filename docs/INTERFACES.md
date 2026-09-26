@@ -1,6 +1,6 @@
 # Interfaces
 
-factory-simulator가 발행·구독하는 4개 Interface(Sensor Vibration, Product Created, Line Status, Conveyor Control)는 확정이다(`schema_version` 1). 나머지는 `docs/ARCHITECTURE.md` 5.1절 Topic 구조와 7절 데이터 흐름에서 도출한 후보이며 Payload Schema는 미정이다. 공통 Payload 규칙(인코딩, 이름, `schema_version`, timestamp, 단위, 오류 표현)은 `docs/CONVENTIONS.md`.
+factory-simulator가 발행·구독하는 4개 Interface(Sensor Vibration, Product Created, Line Status, Conveyor Control)와 vision-inspection이 발행하는 Vision Result는 확정이다(`schema_version` 1). 나머지는 `docs/ARCHITECTURE.md` 5.1절 Topic 구조와 7절 데이터 흐름에서 도출한 후보이며 Payload Schema는 미정이다. 공통 Payload 규칙(인코딩, 이름, `schema_version`, timestamp, 단위, 오류 표현)은 `docs/CONVENTIONS.md`.
 
 ## Interface 목록
 
@@ -9,7 +9,7 @@ factory-simulator가 발행·구독하는 4개 Interface(Sensor Vibration, Produ
 | Sensor Vibration | `factory/sensor/<sensor_id>/vibration` | factory-simulator | predictive-maintenance, factory-operations (Time-Series DB 적재 포함) | 0 | false | 4.1, 4.4, 5.2, 7.1 | 확정 |
 | Product Created | `factory/product/created` | factory-simulator | vision-inspection, factory-operations | 1 | false | 3.3, 4.3, 7.2 | 확정 |
 | PdM Result | `factory/pdm/result` | predictive-maintenance | factory-operations | 미정 | 미정 | 4.2, 7.1, 7.3 | 미정 |
-| Vision Result | `factory/vision/result` | vision-inspection | factory-operations | 미정 | 미정 | 4.3, 7.2 | 미정 |
+| Vision Result | `factory/vision/result` | vision-inspection | factory-operations | 1 | false | 4.3, 7.2 | 확정 |
 | Alarm Event | `factory/alarm/event` | factory-operations | 미정 | 미정 | 미정 | 4.4 | 미정 |
 | Conveyor Control | `factory/control/conveyor` | factory-operations | factory-simulator | 1 | false (factory-simulator는 retained 메시지를 적용하지 않는다) | 4.4, 7.3 | 확정 |
 | Line Status | `factory/line/status` | factory-simulator | factory-operations | 1 | true | 4.1, 4.4 | 확정 |
@@ -75,6 +75,44 @@ Topic 이름에 `simulator`를 쓰지 않는 것은 Simulator Replacement Princi
 - 시간 관계(상관분석 Time Lag 참고): 불량 여부는 투입 시점의 진동 심각도로 정해진다. 기본 설정에서 투입 → 연마·세정 장비 통과 약 6.7초, 투입 → 캡처(`timestamp`) 약 13.3초다(벨트 0.15 m/s, 장비 1.0 m, 검사 지점 2.0 m).
 - 순서·중복: 발행 순서는 캡처 순서다. 재전송·중복 제거는 없다.
 - 제품 이미지: JPEG(baseline, sRGB), 640 × 640 px, 품질 0.92. 검사 카메라가 칩 바로 위에서 아래를 본 원근 이미지다. 칩 윗면 높이에서 가로·세로 약 0.16 m를 담고, 이미지 오른쪽이 벨트 진행 방향이다. 한 이미지에 칩 하나가 중앙 근처에 있다(칩 긴 변이 폭의 약 69%). 주석·표시는 없다. 결함은 칩 윗면에만 있다.
+
+## Vision Result
+
+제품마다 한 번 발행한다. QoS 1, retain false. 현재 범위(ARCHITECTURE 4.3절 현재 범위)에서 Vision은 AI 판정을 하지 않고 Simulator 불량 정보를 옮긴다(pass-through).
+
+```json
+{
+  "schema_version": 1,
+  "product_id": "P-00000113",
+  "timestamp": "2026-09-25T05:20:13.425Z",
+  "defect": true,
+  "defect_type": "scratch",
+  "confidence": null,
+  "bbox": null,
+  "image_path": "products/P-00000113.jpg",
+  "gradcam_path": null,
+  "judgement_source": "PASS_THROUGH"
+}
+```
+
+| 필드 | 필수 | 형식 | 의미 |
+|---|---|---|---|
+| `schema_version` | 예 | 1 | `docs/CONVENTIONS.md` |
+| `product_id` | 예 | string | Product Created의 값 그대로 |
+| `timestamp` | 예 | string | Product Created의 `timestamp`(캡처 시각)를 바꾸지 않고 싣는다(ARCHITECTURE 9, 17절). 처리 시각 필드는 두지 않는다 |
+| `defect` | 예 | bool | 불량 여부. 현재 범위에서는 Simulator 불량 정보를 옮긴 값 |
+| `defect_type` | 예 | string\|null | `scratch`, `dent`, `contamination`(소문자). 양품이면 null |
+| `confidence` | 예 | number\|null | 판정 신뢰도(0~1). 현재 범위에서는 항상 null |
+| `bbox` | 예 | [int×4]\|null | `[x_min, y_min, x_max, y_max]` px(`docs/CONVENTIONS.md` 이미지 좌표). 현재 범위에서는 항상 null |
+| `image_path` | 예 | string | Product Created의 값 그대로 (Image Reference) |
+| `gradcam_path` | 예 | string\|null | `gradcam/` 아래 상대 경로. 현재 범위에서는 항상 null |
+| `judgement_source` | 아니오 | string | 판정 출처. 현재 범위에서는 `PASS_THROUGH`. 소비자는 무시해도 된다 |
+
+- 값이 없는 필드도 키는 남기고 null을 넣는다. 소비자가 필드 누락으로 파싱에 실패하지 않게 하기 위해서다.
+- 발행 전제: 그 제품의 Product Created와 불량 정보를 받아 검증을 마쳤다. 불량 정보를 받는 경로는 후속 DOCUMENT_CHANGE로 정한다(ARCHITECTURE 4.3절 현재 범위, 8절).
+- 오류: 입력이 잘못되었으면 Vision Result를 발행하지 않고 로그로 남긴다(`docs/CONVENTIONS.md` 오류 표현). 오류 결과 메시지는 없다.
+- 순서·중복: 재전송·중복 제거는 없다. 같은 제품의 결과가 두 번 올 수 있으며 소비자는 `product_id`로 구분한다.
+- Ground Truth와의 관계: `defect`, `defect_type`은 현재 범위에서 Ground Truth와 같은 값이다. 이 Payload는 AI 추론 입력이 아니며, `judgement_source: "PASS_THROUGH"`로 전달값임을 표시한다(ARCHITECTURE 8절 현재 범위 예외).
 
 ## Conveyor Control
 
@@ -157,8 +195,8 @@ Topic 이름에 `simulator`를 쓰지 않는 것은 Simulator Replacement Princi
 | `products/P-XXXXXXXX.jpg` | factory-simulator | vision-inspection, factory-operations | 제품 이미지 (Product Created) |
 | `products/.P-XXXXXXXX.jpg.tmp` | factory-simulator | 없음 | 기록 중 임시 파일. 소비자는 점으로 시작하는 파일을 무시한다 |
 | `ground_truth/products.jsonl` | factory-simulator | 평가·검증 목적만 (Ground Truth) | runtime Ground Truth |
-| `training/`, `evaluation/` | vision-inspection (필요하면) | vision-inspection | Vision 학습·평가 데이터. factory-simulator는 쓰지 않는다 |
-| `gradcam/` | vision-inspection | factory-operations | Grad-CAM 결과 |
+| `training/`, `evaluation/` | vision-inspection (필요하면) | vision-inspection | Vision 학습·평가 데이터. factory-simulator는 쓰지 않는다. 현재 범위(ARCHITECTURE 4.3절)에서는 쓰지 않는다 |
+| `gradcam/` | vision-inspection | factory-operations | Grad-CAM 결과. 디렉터리는 유지하되 현재 범위에서는 비어 있다(Vision Result `gradcam_path`는 null) |
 
 - 경로 표기: MQTT에는 Image Storage 루트 기준 상대 경로만 싣는다. 예: `products/P-00001024.jpg`. 절대 경로와 루트 디렉터리는 각 프로세스의 설정으로 받는다 (ARCHITECTURE 14절).
 - 발행 전제: 생산자는 파일 기록을 끝낸 뒤에 이벤트를 발행한다. 같은 디렉터리의 임시 이름에 끝까지 쓰고 닫은 뒤 최종 이름으로 rename하여, 소비자가 최종 경로에서 불완전한 파일을 보지 않게 한다. 소비자는 이벤트 수신 시점에 파일이 완성되어 있다고 가정한다.
@@ -188,7 +226,7 @@ factory-simulator는 `ground_truth/products.jsonl`(Image Storage)에 Product Cre
 | `render_seed` | int | 렌더링 변화용 seed |
 
 - 용도: Vision의 평가(mAP)·학습 데이터 구성, Operations의 평가, integration의 검증, 디버깅(ARCHITECTURE 3.4, 17절). **AI 추론 입력으로 읽지 않는다.** 이 파일은 MQTT로 전달하지 않는다.
-- integration은 Ground Truth가 MQTT Payload에 없는지 검사할 때 위 필드 목록을 기준으로 쓴다.
+- integration은 Ground Truth가 MQTT Payload에 없는지 검사할 때 위 필드 목록을 기준으로 쓴다. 단, 현재 범위에서 Vision Result의 `defect`, `defect_type`은 pass-through 결과로 허용하는 예외다(ARCHITECTURE 8절 현재 범위 예외). 검사 대상은 AI 추론 입력 Payload(Product Created 등)와 Vision Result의 나머지 Ground Truth 필드다.
 - 파일 하나에 계속 쌓인다(시연 5분에 150줄, 약 60 KB).
 
 ## PdM 학습 진동 데이터셋

@@ -58,6 +58,17 @@
         "integration"
       ],
       "path": "issues/ISSUE-fde005ee-49bf-4e44-a67d-07994e3c7410.yaml"
+    },
+    {
+      "issue_id": "ISSUE-e156d982-4404-4802-ab33-fde74fde09b9",
+      "type": "DOCUMENT_CHANGE",
+      "summary": "Vision AI 판정을 현재 범위에서 제외(pass-through)하고 Vision Result Interface를 확정",
+      "attention": [
+        "factory-operations",
+        "integration",
+        "factory-simulator"
+      ],
+      "path": "issues/ISSUE-e156d982-4404-4802-ab33-fde74fde09b9.yaml"
     }
   ]
 }
