@@ -52,6 +52,8 @@
 * PdM Inference `100ms 이내`
 * Dashboard 데이터 `5초 이내 갱신`
 
+PdM Inference 측정 구간: 분석 윈도우의 마지막 Sensor Vibration 메시지를 받은 시각부터 그 윈도우의 PdM Result 발행 시각까지. 윈도우를 채우는 시간과 chunk 발행 지연(약 0.1초)은 포함하지 않는다.
+
 즉, **과제 검증에 필요한 성능 측정은 수행하지만 Production 운영을 위한 성능·안정성 최적화는 수행하지 않는다.**
 
 ---
@@ -178,17 +180,19 @@ Fault Level은 내부 시뮬레이션 파라미터 및 Ground Truth로 사용한
 
 #### Synthetic Sensor Generation
 
-가상 진동 센서 데이터를 생성한다.
+가상 진동 센서 데이터를 생성한다. 샘플링 10 kHz, 0.1초 chunk 단위로 발행한다.
 
-최소 데이터:
+chunk 최소 데이터:
 
-* timestamp
+* timestamp (첫 샘플 시각)
 * sensor_id
-* vibration_x
-* vibration_y
-* vibration_z
+* seq
+* sample_rate_hz
+* rpm
 * temperature
-* fault_level
+* vibration_x, vibration_y, vibration_z (각 1,000 샘플 배열)
+
+센서 데이터에는 `fault_level`을 넣지 않는다. 현재 Fault Level은 Line Status로 발행하며, 시계열 적재에 필요하면 Line Status에서 결합한다. 형식은 `docs/INTERFACES.md` Sensor Vibration.
 
 진동 데이터는 필요에 따라 수학적 Fault Injection을 적용한다.
 
@@ -211,19 +215,15 @@ Fault Level에 따라 제품 불량 생성 확률을 변경할 수 있다.
 * Dent
 * Contamination
 
-#### Vision Dataset Generation
+#### Runtime Image Randomization
 
-Vision 모델 학습을 위한 이미지 생성 시 Domain Randomization을 적용한다.
+Vision 학습·평가 전용 이미지는 생성하지 않는다. `training/`, `evaluation/`에 쓰지 않으며, Vision 학습 데이터의 출처는 Vision Quality Inspection이 정한다.
 
-예:
+runtime 제품 이미지에는 설정으로 약한 Randomization(제품 위치, 제품 회전, 조명)을 켤 수 있다. 제공하는 것은 runtime 제품 이미지와 runtime Ground Truth(`docs/INTERFACES.md` Ground Truth)뿐이다.
 
-* 조명
-* 카메라 각도
-* 제품 위치
-* 제품 회전
-* 배경
-* 결함 위치
-* 결함 크기
+#### PdM Training Data Generation
+
+PdM 학습용 진동 데이터셋을 runtime과 같은 신호 코드로 생성한다. 형식과 생성 명령은 `docs/INTERFACES.md` PdM 학습 진동 데이터셋.
 
 #### Event Publishing
 
@@ -690,8 +690,11 @@ factory/
 ├─ alarm/
 │   └─ event
 │
-└─ control/
-    └─ conveyor
+├─ control/
+│   └─ conveyor
+│
+└─ line/
+    └─ status
 ```
 
 정확한 Topic 명세와 Payload Schema는 별도 Interface 문서(`docs/INTERFACES.md`)에 정의한다.
@@ -710,16 +713,16 @@ factory/
 TimescaleDB
 ```
 
-최소 데이터 구조:
+최소 데이터 구조: Sensor Vibration chunk 단위로 적재한다(`docs/INTERFACES.md` Sensor Vibration). 배열로 둘지 샘플 단위로 전개할지는 Factory Operations & Control이 정한다.
 
 ```text
 timestamp
 sensor_id
-vibration_x
-vibration_y
-vibration_z
+seq
+rpm
 temperature
-fault_level
+vibration_x, vibration_y, vibration_z
+fault_level (Line Status에서 as-of join으로 결합, 없으면 null)
 ```
 
 Factory Operations & Control이 센서 이벤트를 MQTT로 구독하여 적재하며, 테이블 스키마(DDL)를 소유한다 (4.4절 Data Persistence).
@@ -771,6 +774,7 @@ Production 수준의 데이터 복구 및 백업 정책은 구현하지 않는�
 
 ```text
 Product Image
+Runtime Ground Truth
 Vision Training Dataset
 Inspection Image
 Grad-CAM Result
@@ -783,6 +787,7 @@ Grad-CAM Result
 ```text
 /data/
 ├─ products/
+├─ ground_truth/
 ├─ training/
 ├─ gradcam/
 └─ evaluation/
@@ -792,7 +797,7 @@ Grad-CAM Result
 
 MQTT에서는 이미지 경로 또는 참조 정보만 전달한다.
 
-경로 표기와 파일 기록 완료 보장은 `docs/INTERFACES.md`의 Image Reference 규칙을 따른다.
+경로 표기, 디렉터리별 기록·읽기 주체, 파일 기록 완료 보장은 `docs/INTERFACES.md`의 Image Reference 규칙을 따른다. runtime Ground Truth(`ground_truth/products.jsonl`)의 형식은 `docs/INTERFACES.md` Ground Truth.
 
 별도의 파일 이중화, 원격 백업 및 Object Storage 가용성 구성은 고려하지 않는다.
 
@@ -971,7 +976,7 @@ Inference 입력:
 }
 ```
 
-Ground Truth는 Evaluation Dataset에서 별도로 관리한다.
+Ground Truth는 Image Storage의 `ground_truth/products.jsonl`에 별도로 기록하고 MQTT로 전달하지 않는다. 평가·학습 데이터 구성·검증·디버깅에만 쓰며 AI 추론 입력으로 읽지 않는다 (`docs/INTERFACES.md` Ground Truth).
 
 ---
 
@@ -1233,6 +1238,8 @@ Three.js Simulator는 전체 제조 공정의 물리적 정확성을 재현하�
 | Fault Injection        | O                 | X            | X                 | X                    |
 | Sensor Generation      | O                 | X            | X                 | X                    |
 | Product Generation     | O                 | X            | X                 | X                    |
+| PdM 학습 진동 데이터 생성     | O                 | Consume      | X                 | X                    |
+| Vision 학습·평가 데이터     | X                 | X            | O (출처 결정)       | X                    |
 | FFT                    | X                 | O            | X                 | X                    |
 | Feature Extraction     | X                 | O            | X                 | X                    |
 | Autoencoder            | X                 | O            | X                 | X                    |
