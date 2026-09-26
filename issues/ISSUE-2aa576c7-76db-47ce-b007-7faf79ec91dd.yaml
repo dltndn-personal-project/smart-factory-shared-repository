@@ -1,0 +1,64 @@
+issue_id: "ISSUE-2aa576c7-76db-47ce-b007-7faf79ec91dd"
+type: DOCUMENT_CHANGE
+source:
+  component: "predictive-maintenance"
+  task: "spec AGREEMENTS A-01, A-02 (조율 C-04, C-12, C-20)"
+created_at: "2026-09-26T18:39:05Z"
+summary: "PdM Result(factory/pdm/result, QoS 1)를 확정하고 Dashboard FFT 표시용 PdM Spectrum(factory/pdm/spectrum, QoS 0)을 새 Interface로 확정"
+attention:
+  - factory-operations
+  - integration
+related_issues:
+  - ISSUE-63f6789a-a26b-42a4-8b3c-3dcfeaa07e1f
+  - ISSUE-95d74411-a2aa-4520-85ec-b2a90d9b74df
+  - ISSUE-9f81b8ac-d26e-422b-aaed-02adad6ff320
+  - ISSUE-fde005ee-49bf-4e44-a67d-07994e3c7410
+reason: |
+  생산자인 predictive-maintenance가 PdM Result와 PdM Spectrum의 형식을 확정했다. 이를 Shared 계약에 올려 소비자(factory-operations)와 integration이 한 곳을 기준으로 구현·검사하게 한다.
+  - 근거: predictive-maintenance `docs/spec/AGREEMENTS.md` A-01(PdM Result)·A-02(PdM Spectrum)와 끝의 "Shared DOCUMENT_CHANGE에 넣을 내용" 표(main@23c3ceda0c38b0c203b96bb7c05a2942f725d4e5, spec PR #4 merge). 같은 저장소 `DECISIONS.md` D-20·D-21.
+  - 조율 결정(책임자 위임, 2026-09-27): C-04(미정 Interface는 생산자가 spec에서 확정하고 Shared DOCUMENT_CHANGE로 올린다), C-12(FFT Spectrum은 PdM이 별도 Topic `factory/pdm/spectrum`으로 발행, QoS 0), C-15(PdM Result 초안을 기준으로 factory-operations가 맞춘다), C-20(게시 방식).
+  - 현재 계약: INTERFACES 목록의 PdM Result는 QoS·retain·Payload Schema·상태가 "미정"이다. ARCHITECTURE 4.4 Dashboard 최소 표시 정보에 "FFT Spectrum"이 있고 17절에서 FFT는 PdM 전담이지만, 그 데이터를 전달하는 Interface가 없다. ARCHITECTURE 4.2 Output 예시의 timestamp는 밀리초가 없어 CONVENTIONS Timestamp(밀리초 3자리 고정)와 어긋나고, `health_index` 32는 `anomaly_score` 0.82와 대응하지 않는다.
+  - 이 변경은 predictive-maintenance 구현을 정당화하려는 것이 아니다. predictive-maintenance에는 아직 runtime 구현이 없고 contract_ref는 null이다. 구현은 spec(AGREEMENTS A-01·A-02) 기준으로 진행하며, merge 뒤 CONTRACT-1 task가 이 merge commit을 contract_ref로 채택한다.
+  - 소비자 쪽 기대(factory-operations `docs/spec/AGREEMENTS.md` A-05·A-06, main@ffb2c4c66749c26449b547cb0e805d485c0ca85e)와 대조했고 모순이 없다(compatibility 참고). factory-operations가 A-05에서 확정본에 명시해 달라고 요청한 네 가지(retain false, `timestamp` = Simulator 시각에서 계산한 윈도우 끝, `rpm == 0` 미발행, 재가동 뒤 첫 결과의 윈도우)를 모두 본문에 적었다.
+changed_documents:
+  - file: docs/INTERFACES.md
+    section: "머리말(확정 Interface 목록), Interface 목록 PdM Result 행·PdM Spectrum 행(신설)과 QoS 설명, PdM Result(신설), PdM Spectrum(신설)"
+  - file: docs/ARCHITECTURE.md
+    section: "4.2 Output(예시와 INTERFACES 참조), 5.1 Topic 구조(pdm/spectrum)"
+change:
+  before: |
+    - INTERFACES: PdM Result는 Topic `factory/pdm/result`, 생산자 predictive-maintenance, 소비자 factory-operations만 있고 QoS·retain·Payload Schema·상태가 미정. FFT Spectrum을 전달하는 Interface 없음.
+    - ARCHITECTURE 4.2 Output: "대표적인 출력 구조" 예시(`timestamp` 초 단위 `2026-09-09T05:20:13Z`, `sensor_id`, `anomaly_score` 0.82, `health_index` 32, `state`)뿐이고 정확한 형식의 위치가 없다.
+    - ARCHITECTURE 5.1 Topic 구조: `pdm/` 아래 `result`만 있다.
+  after: |
+    - INTERFACES PdM Result 확정(schema_version 1, `factory/pdm/result`, QoS 1, retain false):
+      - 필수 `schema_version`, `sensor_id`, `timestamp`(분석 윈도우의 끝 = 마지막 chunk `timestamp` + 0.1초, Sensor Vibration timestamp에서만 계산), `window_start`, `anomaly_score`(0~1, 소수 4자리), `health_index`(int, `floor(100·(1 − 반올림 전 anomaly_score))`), `state`(대문자 4값, 4.2 표). 선택 `model_version`.
+      - 발행: 센서마다 1초 윈도우를 0.5초 hop으로, 연속 chunk 10개(`seq` 연속, 같은 `rpm`, `rpm > 0`)가 모이면 하나. 정지 중(`rpm == 0`)·윈도우 미완성·입력 오류·추론 예외면 발행하지 않는다. 재가동 뒤 첫 결과는 재가동 chunk + 1초이며 정지 전 chunk가 섞이지 않는다.
+      - 중복·순서, retain false 이유, 평활화 없음, 오류 표현(오류 결과 없음, 소비자는 적용하지 않고 로그), Ground Truth 미포함, 정상·거부 예, integration 검사 항목.
+    - INTERFACES PdM Spectrum 신설·확정(schema_version 1, `factory/pdm/spectrum`, QoS 0, retain false):
+      - 센서마다 1초에 하나, 같은 윈도우의 PdM Result 발행 뒤. 필드 모두 필수: `schema_version`, `sensor_id`, `timestamp`, `window_start`(PdM Result와 같은 의미·같은 값), `rpm`, `freq_step_hz`, `rot_hz`, `bpfo_hz`, `bpfi_hz`, 축별 원 스펙트럼 `spectrum_x/y/z`, 축별 포락선 스펙트럼 `envelope_x/y/z`(g, 0~500 Hz, 길이 `floor(500 / freq_step_hz) + 1`, 기본 501).
+      - 발행 조건은 PdM Result와 같고 설정으로 끌 수 있다. 약 21 KB. 오류 표현(표시하지 않고 로그, 직전 표시 유지), 거부 예, integration 검사 항목.
+    - INTERFACES 목록: PdM Result 행 QoS 1·retain false·확정. PdM Spectrum 행 추가(소비자 factory-operations Dashboard, QoS 0, retain false, 근거 4.2·4.4 Dashboard·17 FFT, 확정). QoS 설명에 PdM Spectrum이 표시용 QoS 0임을 추가. 머리말 확정 목록에 PdM Result·PdM Spectrum 추가.
+    - ARCHITECTURE 4.2 Output: 예시를 INTERFACES PdM Result 예시와 같게(밀리초 timestamp, `schema_version`, `window_start`, `model_version`, `anomaly_score`와 `health_index`가 대응) 바꾸고, 정확한 형식은 INTERFACES PdM Result, FFT Spectrum 표시 데이터는 PdM Spectrum이라는 문장을 추가.
+    - ARCHITECTURE 5.1 Topic 구조: `pdm/` 아래 `spectrum` 추가.
+compatibility: |
+  확정 Interface의 형식·의미는 바꾸지 않는다. 후보·미정이던 PdM Result가 확정되고 PdM Spectrum이 새로 생긴다. PdM Result는 후보였으므로 Breaking change로 보지만, 이 형식과 다른 확정 구현은 없다고 판단한다(predictive-maintenance, factory-operations 모두 runtime 구현 전).
+  - factory-simulator: 영향 없음. Sensor Vibration(확정)을 그대로 소비하며 바라는 변경이 없다. predictive-maintenance는 Line Status와 Ground Truth 파일을 읽지 않는다.
+  - vision-inspection: 영향 없음. Vision Result·Product Created·Image Reference·Ground Truth를 바꾸지 않는다.
+  - factory-operations: 소비자. `factory/pdm/result`를 QoS 1로 구독하고 이 형식을 쓴다. `timestamp`(윈도우 끝)를 재가동 기준 시각 비교와 `health_index_at_time` 결합에 쓴다. `factory/pdm/spectrum`을 Dashboard FFT Spectrum 표시에만 쓴다. factory-operations spec AGREEMENTS A-05·A-06(main@ffb2c4c)의 기대와 대조한 결과:
+    - A-05의 Topic·QoS·retain, 필드와 타입, `timestamp` 의미, 정지 중 미발행, 재가동 뒤 첫 결과의 윈도우, 0.5초 주기, 센서별 결과, 평활화 없음이 모두 일치한다.
+    - A-05는 `window_start`를 선택으로 보지만 이 계약은 필수다. 생산자가 항상 넣으므로 factory-operations 수신에는 문제가 없다(소비자가 더 느슨한 것은 허용).
+    - A-06은 필드 이름에 느슨하게 의존한다(최상위 숫자 배열 = 계열, 이름에 `envelope`면 포락선, `freq_step_hz`). 이 계약의 필드 이름이 그 권장과 같다. A-06의 수신 한도(메시지 256 KiB, 배열 길이 2~4096)는 기본 설정(약 21 KB, 501개) 안이다. 배열 길이가 4096을 넘으려면 `freq_step_hz`가 약 0.12 Hz 미만(윈도우 약 8초 초과)이어야 하므로 기본 설정에서는 해당하지 않는다.
+    - predictive-maintenance A-03(소비자 권고: 마지막 판정 표시 2초, Spectrum 3초, 재가동 기준 시각, 경계 흔들림)은 factory-operations A-04·A-05·A-02 규칙과 어긋나지 않는다. 이 권고는 소비자 내부 규칙이라 계약에 넣지 않았다(평활화 없음이라는 생산자 사실만 적었다).
+    - factory-operations는 merge 뒤 OPS-10에서 이 commit을 contract_ref로 채택하고 spec과 다른 점이 있으면 맞춘다(조율 C-20).
+  - integration: 계약 검사 대상 추가. PdM Result·PdM Spectrum을 Interface 준수 검사(필수 필드·타입, timestamp 정규식, `state`와 `health_index` 구간 일치, `window_start < timestamp`, Spectrum 배열 길이·유한성)와 Ground Truth 필드 부재 검사에 넣는다. 통합 환경 PdM Inference 측정(2절, 19.1)의 기준 메시지는 PdM Result다.
+  - predictive-maintenance: 생산자. spec AGREEMENTS A-01·A-02와 같은 내용이므로 구현 기준은 바뀌지 않는다. merge 뒤 CONTRACT-1에서 이 commit을 contract_ref로 채택하고 Shared 본문과 A-01·A-02가 같은지 확인한다.
+  - 정리한 표현: AGREEMENTS의 Component 내부 참조(`08-verification.md`, `06-service.md`, Simulator AGREEMENTS 항목, Model Bundle·`SPECTRUM_EVERY` 같은 설정 이름)는 Shared 절 참조나 일반 표현으로 바꿨다. 의미는 바꾸지 않았다. predictive-maintenance A-03의 "평활화·히스테리시스 없음"과 factory-operations A-05가 요청한 "재가동 뒤 결과 윈도우에 정지 전 chunk가 섞이지 않음"은 A-01 발행 조건에서 따라 나오는 사실이라 한 문장씩 덧붙였다. ARCHITECTURE 4.2 예시의 `health_index`를 `anomaly_score`와 대응하는 값으로 바꾼 것은 A-01 필드 정의와의 모순을 없애기 위해서다.
+  - I-4(ISSUE-63f6789a…) Q-7의 QoS·retain 질문에 PdM Result·PdM Spectrum 두 Topic에 대해 답한다. 공통 client id 규칙은 정하지 않는다.
+  - ISSUE-9f81b8ac…의 Sensor Vibration chunk·`seq`·`rpm == 0` 규칙과 ISSUE-fde005ee… predictive-maintenance 5항(자기 Payload에도 CONVENTIONS 공통 규칙 적용)을 전제로 한다.
+transition:
+  adoption: |
+    계약 변경 승인 책임자(@dltndn, ISSUE-95d74411…) 승인 후 merge(조율 C-01에 따라 조율 agent가 merge). merge 뒤 predictive-maintenance(CONTRACT-1), factory-operations(OPS-10), integration이 이 merge commit을 contract_ref로 채택한다. vision-inspection은 필요한 Interface가 바뀌지 않아 기존 contract_ref를 유지해도 된다.
+    검증: predictive-maintenance는 단위·smoke 테스트로 발행 메시지를 이 필드 표·거부 예로 검사한다(spec `08-verification.md` 3.5·3.7절). 시스템 호환은 integration이 COMPOSITION.json에 고정한 조합에서 7.1·7.3 E2E(Fault Level 8 이상에서 약 1.0~1.6초 뒤 `state: CRITICAL`, 정지 중 PdM Result·Spectrum 없음)와 Interface 준수 검사로 확인한다.
+  rollback: |
+    ARCHITECTURE 19절 복구 방법: 마지막으로 검증된 Component commit 조합과 계약 commit(d0c997c97129141d9853a42ce6e0d1f8f7309ae9)으로 되돌린다. 운영 기간이므로 되돌리는 변경도 새 DOCUMENT_CHANGE로 게시한다. predictive-maintenance 구현은 spec AGREEMENTS를 따르므로 계약만 되돌리면 구현과 계약이 다시 어긋난다. 되돌릴 때는 AGREEMENTS A-01·A-02 수정 여부를 함께 결정한다.

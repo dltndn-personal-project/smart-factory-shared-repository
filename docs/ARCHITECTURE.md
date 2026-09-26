@@ -356,15 +356,20 @@ Health Index는 `0~100` 범위로 표현한다.
 
 ```json
 {
-  "timestamp": "2026-09-09T05:20:13Z",
+  "schema_version": 1,
   "sensor_id": "motor01",
-  "anomaly_score": 0.82,
-  "health_index": 32,
-  "state": "CRITICAL"
+  "timestamp": "2026-09-25T05:20:14.400Z",
+  "window_start": "2026-09-25T05:20:13.400Z",
+  "anomaly_score": 0.7518,
+  "health_index": 24,
+  "state": "CRITICAL",
+  "model_version": "v1"
 }
 ```
 
-분석 결과는 MQTT를 통해 Factory Operations & Control에 전달한다.
+분석 결과는 MQTT를 통해 Factory Operations & Control에 전달한다. 정확한 형식(필드, `timestamp` = 분석 윈도우의 끝, 발행 주기, 정지 중 미발행)은 `docs/INTERFACES.md` PdM Result다.
+
+Dashboard의 FFT Spectrum 표시 데이터는 PdM Result와 나누어 별도 Topic으로 발행한다(`docs/INTERFACES.md` PdM Spectrum).
 
 ---
 
@@ -698,7 +703,8 @@ factory/
 │   └─ created
 │
 ├─ pdm/
-│   └─ result
+│   ├─ result
+│   └─ spectrum
 │
 ├─ vision/
 │   └─ result
