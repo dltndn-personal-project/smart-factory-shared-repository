@@ -21,7 +21,7 @@
 
 ## Ground Truth (ARCHITECTURE 3.4, 8절)
 
-`fault_level`, 생성한 defect type 등 Ground Truth는 AI Runtime 추론 입력에 포함하지 않는다. 학습 데이터 생성, 평가, 시뮬레이터 검증, 디버깅에만 사용한다. runtime Ground Truth의 위치와 형식은 `docs/INTERFACES.md` Ground Truth.
+`fault_level`, 생성한 defect type 등 Ground Truth는 AI Runtime 추론 입력에 포함하지 않는다. 학습 데이터 생성, 평가, 시뮬레이터 검증, 디버깅에만 사용한다. runtime Ground Truth의 위치와 형식은 `docs/INTERFACES.md` Ground Truth. 예외: 현재 범위의 Vision은 추론 없이 판정값을 전달하려고 `ground_truth/products.jsonl`의 `defect`, `defect_type`을 읽어 Vision Result로 옮긴다(ARCHITECTURE 4.3절 현재 범위, 8절). AI 추론 입력이 아니므로 위 원칙과 충돌하지 않는다.
 
 ## Payload·이름·단위·오류 표현
 
