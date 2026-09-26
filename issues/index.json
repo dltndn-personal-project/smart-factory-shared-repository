@@ -69,6 +69,25 @@
         "integration"
       ],
       "path": "issues/ISSUE-c8fad59b-796c-42aa-b969-be0be65eae43.yaml"
+    },
+    {
+      "issue_id": "ISSUE-2aa576c7-76db-47ce-b007-7faf79ec91dd",
+      "type": "DOCUMENT_CHANGE",
+      "summary": "PdM Result(factory/pdm/result, QoS 1)를 확정하고 Dashboard FFT 표시용 PdM Spectrum(factory/pdm/spectrum, QoS 0)을 새 Interface로 확정",
+      "attention": [
+        "factory-operations",
+        "integration"
+      ],
+      "path": "issues/ISSUE-2aa576c7-76db-47ce-b007-7faf79ec91dd.yaml"
+    },
+    {
+      "issue_id": "ISSUE-88d9231d-a0a1-4923-9181-f80bc2ff0dac",
+      "type": "DOCUMENT_CHANGE",
+      "summary": "Alarm Event(factory/alarm/event, QoS 1, retain false)를 확정: WARNING·CRITICAL로 올라갈 때 한 번 발행, Runtime 소비자 없음(integration 관찰)",
+      "attention": [
+        "integration"
+      ],
+      "path": "issues/ISSUE-88d9231d-a0a1-4923-9181-f80bc2ff0dac.yaml"
     }
   ]
 }
