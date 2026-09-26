@@ -17,7 +17,7 @@ related_issues:
 reason: |
   I-1(ISSUE-a47146af…)이 제안한 범위 축소를 계약 문서에 반영한다.
   - 근거: 과제 출제자의 승인(사용자 결정 D-2, 2026-09-24). ARCHITECTURE 16절(Simulator 변경)과 같은 "출제자 승인" 형식으로 적는다.
-  - 사용자 결정(2026-09-24~27, vision-inspection docs/ARCHITECTURE.md 11.3절 D-1~D-12): Vision AI 판정(YOLOv8/EfficientDet 검출, Grad-CAM, 학습·평가)과 2절 Vision 성능 기준을 "현재 범위 제외"로 하고, Vision은 Simulator 불량 정보를 Vision Result로 옮기는 pass-through를 맡는다.
+  - 사용자 결정(2026-09-24~27, vision-inspection docs/ARCHITECTURE.md 11.3절 D-1~D-12, https://github.com/dltndn-personal-project/smart-factory-vision-inspection/blob/4eff75a447cc761abf8a3185e262a53b9f015574/docs/ARCHITECTURE.md): Vision AI 판정(YOLOv8/EfficientDet 검출, Grad-CAM, 학습·평가)과 2절 Vision 성능 기준을 "현재 범위 제외"로 하고, Vision은 Simulator 불량 정보를 Vision Result로 옮기는 pass-through를 맡는다.
   - 출력 결정: Vision Result는 A§4.3 필드를 유지한다. `confidence`, `bbox`, `gradcam_path`는 키를 두고 null이다(D-7, D-8). 선택 필드 `judgement_source`로 전달값임을 표시한다(D-9). `gradcam/`과 Dashboard Grad-CAM 항목은 유지하되 비어 있다(D-10).
   - I-1 이후 merge된 계약(ISSUE-9f81b8ac…)이 CONVENTIONS 공통 규칙(schema_version, 밀리초, 소문자 결함 유형, 대문자 열거값, px 좌표, 오류 표현)을 정했으므로 Vision Result를 그 규칙으로 적는다. D-9의 값은 열거값 대문자 규칙에 따라 `PASS_THROUGH`로 쓴다.
   - 이 변경은 vision-inspection 구현을 정당화하려는 것이 아니다. vision-inspection에는 아직 구현이 없고 contract_ref는 null이며, 구현은 이 계약이 승인된 뒤 시작한다.
